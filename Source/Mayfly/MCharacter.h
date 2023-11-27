@@ -8,6 +8,7 @@
 
 class USpringArmComponent;
 class UCameraComponent;
+class USplineComponent;
 
 UCLASS()
 class MAYFLY_API AMCharacter : public ACharacter
@@ -25,17 +26,32 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	UCameraComponent* CameraComp;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(VisibleAnywhere)
+	USplineComponent* TakeoffSplineComp;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
 	float LookTowardsSpeedDegrees = 200.0f;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
 	float LookTowardsSpeedScaling = 200.0f;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
 	float LungeStrength = 250000.0f;
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
 	float BackstepStrength = 150000.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
+	float SpringArmVelocityFactor = 0.05f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
+	float MaxVelocity = 500.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
+	float TakeoffDurationSec = 1.0f;
+
+	FTimerHandle TimerHandle_Takeoff;
+	FVector LocationBeforeTakeoff;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -52,7 +68,8 @@ public:
 private:
 	void MoveForward(float Value);
 	void MoveRight(float Value);
-	void Lunge();
+	void Takeoff();
+	void TakeoffEnded();
 	void Backstep();
 	void StartFlying();
 	void VisualiseRotations();

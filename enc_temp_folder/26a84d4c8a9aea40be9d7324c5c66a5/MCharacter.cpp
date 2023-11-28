@@ -50,23 +50,9 @@ void AMCharacter::Tick(float DeltaTime)
 		float SplineProgressPercent = GetWorldTimerManager().GetTimerElapsed(TimerHandle_Takeoff) / TakeoffDurationSec;
 		float SplineProgressDistance = SplineProgressPercent * TakeoffSplineComp->GetSplineLength();
 		FVector SplineLocationLocalOffset = TakeoffSplineComp->GetLocationAtDistanceAlongSpline(SplineProgressDistance, ESplineCoordinateSpace::Local);
-
-		// Adjust spline location relative to original rotation, ignoring pitch
-		FRotator OrientingRotation = RotationBeforeTakeoff;
-		OrientingRotation.Pitch = 0.0f;
-		FVector SplineLocation = LocationBeforeTakeoff + OrientingRotation.RotateVector(SplineLocationLocalOffset);
+		FVector SplineLocation = LocationBeforeTakeoff + GetActorRotation().RotateVector(SplineLocationLocalOffset);
 		SetActorLocation(SplineLocation);
-
-		// Adjust rotation for cosmetic effect
-		if (SplineProgressDistance > 0.01f)
-		{
-			FVector SplineLocationLocalOffsetMinusEpsilon = TakeoffSplineComp->GetLocationAtDistanceAlongSpline(SplineProgressDistance - 0.01f, ESplineCoordinateSpace::Local);
-			FVector SplineLocationMinusEpsilon = LocationBeforeTakeoff + OrientingRotation.RotateVector(SplineLocationLocalOffsetMinusEpsilon);
-			FVector SplineVectorLocal = SplineLocation - SplineLocationMinusEpsilon;
-			SplineVectorLocal.Normalize();
-			FRotator NewActorRotation = SplineVectorLocal.Rotation();
-			SetActorRotation(NewActorRotation);
-		}
+		return;
 	}
 
 	//const FString CombinedString = FString::Printf(TEXT("Actor yaw=%f, controller yaw=%f"), GetActorRotation().Yaw, GetControlRotation().Yaw);
@@ -113,8 +99,8 @@ void AMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	PlayerInputComponent->BindAxis("MoveRight", this, &AMCharacter::MoveRight);
 	PlayerInputComponent->BindAxis("Yaw", this, &APawn::AddControllerYawInput);
 	PlayerInputComponent->BindAxis("Pitch", this, &APawn::AddControllerPitchInput);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMCharacter::Takeoff);
-	//PlayerInputComponent->BindAction("Lunge", IE_Pressed, this, &AMCharacter::Takeoff);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMCharacter::Jump);
+	PlayerInputComponent->BindAction("Lunge", IE_Pressed, this, &AMCharacter::Takeoff);
 	PlayerInputComponent->BindAction("Backstep", IE_Pressed, this, &AMCharacter::Backstep);
 	PlayerInputComponent->BindAction("StartFlying", IE_Pressed, this, &AMCharacter::StartFlying);
 }
@@ -136,21 +122,12 @@ void AMCharacter::MoveForward(float Value)
 
 void AMCharacter::MoveRight(float Value)
 {
-	if (FMath::IsNearlyZero(Value))
-	{
-		return;
-	}
-
 	FRotator ControlRot = GetControlRotation();
 	ControlRot.Pitch = 0.0f;
 	ControlRot.Roll = 0.0f;
 	// Logic borrowed from Blueprint math library - UKismetMathLibrary::GetRightVector()
-	FVector RightVector = FMath::Sign(Value) * FRotationMatrix(ControlRot).GetScaledAxis(EAxis::Y);
-	RightVector.Normalize();
-
-	GetCharacterMovement()->AddImpulse(RightVector * SidestepStrength, false);
-
-	//AddMovementInput(RightVector, Value * 10.0f);
+	FVector RightVector = FRotationMatrix(ControlRot).GetScaledAxis(EAxis::Y);
+	AddMovementInput(RightVector, Value);
 }
 
 void AMCharacter::Takeoff()
@@ -160,8 +137,10 @@ void AMCharacter::Takeoff()
 		return;
 	}
 
+	//FVector Forwards = GetActorRotation().Vector();
+	//ensure(Forwards.Normalize());
+	//GetCharacterMovement()->AddImpulse(Forwards * LungeStrength, false);
 	LocationBeforeTakeoff = GetActorLocation();
-	RotationBeforeTakeoff = GetActorRotation();
 	GetWorldTimerManager().SetTimer(TimerHandle_Takeoff, this, &AMCharacter::TakeoffEnded, TakeoffDurationSec);
 }
 
@@ -171,16 +150,10 @@ void AMCharacter::TakeoffEnded()
 	const FVector SplineEndMinusEpsilon = TakeoffSplineComp->GetLocationAtDistanceAlongSpline(0.98 * TakeoffSplineComp->GetSplineLength(), ESplineCoordinateSpace::Local);
 	FVector SplineEndingVectorLocal = SplineEnd - SplineEndMinusEpsilon;
 
-	// Align to rotation, ignoring pitch
-	FRotator ActorRotation = GetActorRotation();
-	ActorRotation.Pitch = 0.0f;
-	FVector SplineEndingVector = ActorRotation.RotateVector(SplineEndingVectorLocal);
+	FVector SplineEndingVector = GetActorRotation().RotateVector(SplineEndingVectorLocal);
 	SplineEndingVector.Normalize();
 
-	// Zero out the velocity so that the impulse takes full effect (namely, avoid fall velocity)
-	GetCharacterMovement()->Velocity = FVector::ZeroVector;
-
-	GetCharacterMovement()->AddImpulse(SplineEndingVector * TakeoffStrength, false);
+	GetCharacterMovement()->AddImpulse(SplineEndingVector * LungeStrength, false);
 }
 
 void AMCharacter::Backstep()

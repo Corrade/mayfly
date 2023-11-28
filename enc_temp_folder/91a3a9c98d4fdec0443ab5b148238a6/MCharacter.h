@@ -36,13 +36,10 @@ protected:
 	float LookTowardsSpeedScaling = 200.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
-	float TakeoffStrength = 150000.0f;
+	float LungeStrength = 250000.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
 	float BackstepStrength = 150000.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
-	float SidestepStrength = 50000.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Custom parameters")
 	float SpringArmVelocityFactor = 0.05f;
@@ -55,7 +52,6 @@ protected:
 
 	FTimerHandle TimerHandle_Takeoff;
 	FVector LocationBeforeTakeoff;
-	FRotator RotationBeforeTakeoff;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
